@@ -56,6 +56,12 @@ dependencies {
     compile("com.google.guava:guava:31.1-jre")
     compile("net.fabricmc:tiny-remapper:0.8.6")
     compile("org.quiltmc:quiltflower:1.8.0")
+
+    compile("org.ow2.asm:asm:9.6")
+    compile("org.ow2.asm:asm-commons:9.6")
+    compile("org.ow2.asm:asm-tree:9.6")
+    compile("org.ow2.asm:asm-analysis:9.6")
+    compile("org.ow2.asm:asm-util:9.6")
 }
 
 def compile(str, closure = {}) {
