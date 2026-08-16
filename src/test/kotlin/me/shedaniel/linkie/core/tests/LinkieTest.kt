@@ -1,39 +1,17 @@
 package me.shedaniel.linkie.core.tests
 
 import com.soywiz.klock.measureTime
-import com.soywiz.korio.dynamic.KDynamic.Companion.get
 import com.soywiz.korio.util.toStringDecimal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import me.shedaniel.linkie.Class
-import me.shedaniel.linkie.Field
-import me.shedaniel.linkie.LinkieConfig
-import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.MappingsEntry
-import me.shedaniel.linkie.Method
-import me.shedaniel.linkie.Namespaces
+import me.shedaniel.linkie.*
 import me.shedaniel.linkie.namespaces.*
-import me.shedaniel.linkie.obfMergedName
-import me.shedaniel.linkie.optimumName
-import me.shedaniel.linkie.utils.ClassResultList
-import me.shedaniel.linkie.utils.FieldResultList
-import me.shedaniel.linkie.utils.MappingsQuery
-import me.shedaniel.linkie.utils.MatchAccuracy
-import me.shedaniel.linkie.utils.MemberEntry
-import me.shedaniel.linkie.utils.MethodResultList
-import me.shedaniel.linkie.utils.QueryContext
-import me.shedaniel.linkie.utils.ResultHolder
-import me.shedaniel.linkie.utils.Version
-import me.shedaniel.linkie.utils.like
-import me.shedaniel.linkie.utils.localiseFieldDesc
-import me.shedaniel.linkie.utils.onlyClass
-import me.shedaniel.linkie.utils.remapDescriptor
-import me.shedaniel.linkie.utils.toVersion
-import me.shedaniel.linkie.utils.tryToVersion
+import me.shedaniel.linkie.utils.*
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class LinkieTest {
     @Test
@@ -79,9 +57,9 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            val container = YarnNamespace.getDefaultProvider()
-            val source = container.getSources(container.get().allClasses.random().optimumName)
-            source
+            val provider = YarnNamespace.getDefaultProvider()
+            val source = provider.getSources(provider.get().allClasses.random().optimumName)
+            assertTrue(source.exists(), "Decompiler did not produce a file: ${source.absolutePath}")
         }
     }
 
@@ -124,8 +102,9 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangRawNamespace)))
             delay(2000)
             while (MojangRawNamespace.reloading) delay(100)
-            val container = MojangRawNamespace.getDefaultProvider().get()
-            container
+            val provider = MojangRawNamespace.getDefaultProvider()
+            val source = provider.getSources(provider.get().allClasses.random().optimumName)
+            assertTrue(source.exists(), "Decompiler did not produce a file: ${source.absolutePath}")
         }
     }
 
@@ -157,9 +136,9 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            val container = MojangNamespace.getDefaultProvider()
-            val source = container.getSources(container.get().allClasses.random().optimumName)
-            source
+            val provider = MojangNamespace.getDefaultProvider()
+            val source = provider.getSources(provider.get().allClasses.random().optimumName)
+            assertTrue(source.exists(), "Decompiler did not produce a file: ${source.absolutePath}")
         }
     }
 

@@ -473,45 +473,52 @@ abstract class Namespace(val id: String) {
         mappings: MappingsContainer
     ) = runCatching {
         val filteredJar = config.cacheDirectory / "minecraft-jars" / "$version-client-filtered.jar"
-        if (remappedJar.exists()) return@runCatching remappedJar
-        if (!filteredJar.exists()) {
-            JarOutputStream(Files.newOutputStream(Paths.get(filteredJar.absolutePath))).use {
-                ZipFile(gameJars.minecraftFile.readBytes()).forEachEntry { path, entry ->
-                    if (path.endsWith(".class")) {
-                        val reader = ClassReader(entry.bytes)
-                        val writer = ClassWriter(0)
-                        reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
-                            override fun visitMethod(
-                                access: Int,
-                                name: String?,
-                                descriptor: String?,
-                                signature: String?,
-                                exceptions: Array<out String>?
-                            ): MethodVisitor {
-                                return object : MethodVisitor(
-                                    api,
-                                    super.visitMethod(access, name, descriptor, signature, exceptions)
-                                ) {
-                                    override fun visitLocalVariable(
-                                        name: String?,
-                                        descriptor: String?,
-                                        signature: String?,
-                                        start: Label?,
-                                        end: Label?,
-                                        index: Int
+        // 空 zip 恰好是 22 字节，缓存命中前校验文件非空，避免被历史失败产物毒化
+        if (remappedJar.exists() && File(remappedJar.absolutePath).length() > 22) return@runCatching remappedJar
+        if (!filteredJar.exists() || File(filteredJar.absolutePath).length() <= 22) {
+            if (filteredJar.exists()) filteredJar.delete()
+            try {
+                JarOutputStream(Files.newOutputStream(Paths.get(filteredJar.absolutePath))).use {
+                    ZipFile(gameJars.minecraftFile.readBytes()).forEachEntry { path, entry ->
+                        if (path.endsWith(".class")) {
+                            val reader = ClassReader(entry.bytes)
+                            val writer = ClassWriter(0)
+                            reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
+                                override fun visitMethod(
+                                    access: Int,
+                                    name: String?,
+                                    descriptor: String?,
+                                    signature: String?,
+                                    exceptions: Array<out String>?
+                                ): MethodVisitor {
+                                    return object : MethodVisitor(
+                                        api,
+                                        super.visitMethod(access, name, descriptor, signature, exceptions)
                                     ) {
-                                    }
+                                        override fun visitLocalVariable(
+                                            name: String?,
+                                            descriptor: String?,
+                                            signature: String?,
+                                            start: Label?,
+                                            end: Label?,
+                                            index: Int
+                                        ) {
+                                        }
 
-                                    override fun visitParameter(name: String?, access: Int) {
+                                        override fun visitParameter(name: String?, access: Int) {
+                                        }
                                     }
                                 }
-                            }
-                        }, 0)
-                        it.putNextEntry(ZipEntry(path))
-                        it.write(writer.toByteArray())
-                        it.closeEntry()
+                            }, 0)
+                            it.putNextEntry(ZipEntry(path))
+                            it.write(writer.toByteArray())
+                            it.closeEntry()
+                        }
                     }
                 }
+            } catch (e: Throwable) {
+                filteredJar.delete()
+                throw e
             }
         }
         val remapper = TinyRemapper.newRemapper()
