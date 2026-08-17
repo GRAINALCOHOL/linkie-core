@@ -422,7 +422,7 @@ abstract class Namespace(val id: String) {
         val options = createFFOptions(threads)
 
         val ff = Fernflower({ outer, inner -> getBytes(outer, inner) },
-            QfResultSaver(File(sourcesDir.absolutePath)), options as Map<String, Any>, PrintStreamLogger(System.out)
+            QfResultSaver(File(sourcesDir.absolutePath)), options as Map<String, Any>, PrintStreamLogger(System.err)
         )
 
         for (library in result.libraries) {
@@ -585,10 +585,17 @@ abstract class Namespace(val id: String) {
             .build()
         remapper.readClassPath(*gameJars.libraries.map { Paths.get(it.absolutePath) }.toTypedArray())
         remapper.readInputs(Paths.get(filteredJar.absolutePath))
-        OutputConsumerPath.Builder(Paths.get(remappedJar.absolutePath)).build().use { path ->
-            remapper.apply(path)
+        // tiny-remapper 0.8.6 的告警硬编码写入 System.out，会污染 stdio 协议，临时重定向到 stderr
+        val originalOut = System.out
+        try {
+            System.setOut(System.err)
+            OutputConsumerPath.Builder(Paths.get(remappedJar.absolutePath)).build().use { path ->
+                remapper.apply(path)
+            }
+            remapper.finish()
+        } finally {
+            System.setOut(originalOut)
         }
-        remapper.finish()
         return@runCatching remappedJar
     }
 
