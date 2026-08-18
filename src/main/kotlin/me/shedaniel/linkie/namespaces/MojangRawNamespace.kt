@@ -6,6 +6,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.*
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.FieldVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 import kotlin.collections.set
 
 object MojangRawNamespace : Namespace("mojang_raw") {
@@ -35,22 +40,56 @@ object MojangRawNamespace : Namespace("mojang_raw") {
                     val url = URL(versionJsonMap[it]!!)
                     val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                     val downloads = versionJson["downloads"]!!.jsonObject
-                    readMojangMappings(
-                        client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
-                        server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
-                    )
-                    source(MappingsSource.MOJANG)
+                    val clientMappingsUrl = downloads["client_mappings"]?.jsonObject?.get("url")?.jsonPrimitive?.content
+                    if (clientMappingsUrl != null) {
+                        readMojangMappings(
+                            client = clientMappingsUrl,
+                            server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                        )
+                        source(MappingsSource.MOJANG)
 
-                    if (parchmentVersionMap.contains(it)) {
-                        runCatching {
-                            val parchmentVersion = parchmentVersionMap[it]
-                            URL("https://maven.parchmentmc.org/org/parchmentmc/data/parchment-$it/$parchmentVersion/parchment-$it-$parchmentVersion.zip").toAsyncZip()
-                                .forEachEntry { path, entry ->
-                                    if (!entry.isDirectory && path.split("/").lastOrNull() == "parchment.json") {
-                                        appendParchment(json.parseToJsonElement(entry.bytes.decodeToString()))
+                        if (parchmentVersionMap.contains(it)) {
+                            runCatching {
+                                val parchmentVersion = parchmentVersionMap[it]
+                                URL("https://maven.parchmentmc.org/org/parchmentmc/data/parchment-$it/$parchmentVersion/parchment-$it-$parchmentVersion.zip").toAsyncZip()
+                                    .forEachEntry { path, entry ->
+                                        if (!entry.isDirectory && path.split("/").lastOrNull() == "parchment.json") {
+                                            appendParchment(json.parseToJsonElement(entry.bytes.decodeToString()))
+                                        }
                                     }
-                                }
+                            }
                         }
+                    } else {
+                        val result = jarProvider!!.provide(it)
+                        ZipFile(result.minecraftFile.readBytes()).forEachEntry { path, entry ->
+                            if (!path.endsWith(".class")) return@forEachEntry
+                            val className = path.removeSuffix(".class")
+                            val cls = clazz(className, obfName = className, mappedName = className)
+                            ClassReader(entry.bytes).accept(object : ClassVisitor(Opcodes.ASM9) {
+                                override fun visitField(
+                                    access: Int,
+                                    name: String?,
+                                    descriptor: String?,
+                                    signature: String?,
+                                    value: Any?
+                                ): FieldVisitor? {
+                                    name?.let { cls.field(it, descriptor) { obfField(it) } }
+                                    return null
+                                }
+
+                                override fun visitMethod(
+                                    access: Int,
+                                    name: String?,
+                                    descriptor: String?,
+                                    signature: String?,
+                                    exceptions: Array<out String>?
+                                ): MethodVisitor? {
+                                    name?.let { cls.method(it, descriptor) { obfMethod(it) } }
+                                    return null
+                                }
+                            }, 0)
+                        }
+                        source(MappingsSource.MOJANG)
                     }
                 }
             }
@@ -82,6 +121,8 @@ object MojangRawNamespace : Namespace("mojang_raw") {
     override fun supportsAT(): Boolean = true
     override fun supportsSource(): Boolean = true
     override fun hasMethodArgs(version: String): Boolean = parchmentVersionMap.contains(version)
+    override fun isIdentityMappings(mappings: MappingsContainer): Boolean =
+        mappings.classes.isNotEmpty() && mappings.classes.all { (_, clazz) -> clazz.obfMergedName == clazz.optimumName }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 

@@ -27,7 +27,7 @@ object MojangNamespace : Namespace("mojang") {
                 }
             }
             buildVersions {
-                versions { versionJsonMap.keys }
+                versionsSeq(MojangNamespace::getAllVersions)
                 uuid {
                     (if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it).let { uuid ->
                         if (MojangRawNamespace.hasMethodArgs(it)) "$uuid-parchment-${MojangRawNamespace.parchmentVersionMap[it]}" else uuid

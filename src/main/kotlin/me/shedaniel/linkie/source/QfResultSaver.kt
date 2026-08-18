@@ -7,6 +7,7 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.jar.Manifest
 
 class QfResultSaver(private val output: File) : IFabricResultSaver {
@@ -41,6 +42,13 @@ class QfResultSaver(private val output: File) : IFabricResultSaver {
         val key = "$path/$archiveName"
         val executor: ExecutorService = saveExecutors[key]!!
         executor.shutdown()
+        if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+            executor.shutdownNow()
+            DecompilerContext.getLogger().writeMessage(
+                "Timed out waiting for archive $archiveName writes to finish",
+                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.WARN
+            )
+        }
         saveExecutors.remove(key)
     }
 

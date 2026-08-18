@@ -383,6 +383,7 @@ abstract class Namespace(val id: String) {
     open fun supportsFieldDescription(): Boolean = true
     open fun supportsSource(): Boolean = false
     open fun hasMethodArgs(version: String): Boolean = false
+    open fun isIdentityMappings(mappings: MappingsContainer): Boolean = false
     
     data class PreSource(
         val result: GameJarProvider.Result,
@@ -472,6 +473,7 @@ abstract class Namespace(val id: String) {
         gameJars: GameJarProvider.Result,
         mappings: MappingsContainer
     ) = runCatching {
+        if (isIdentityMappings(mappings)) return@runCatching gameJars.minecraftFile
         val filteredJar = config.cacheDirectory / "minecraft-jars" / "$version-client-filtered.jar"
         // 空 zip 恰好是 22 字节，缓存命中前校验文件非空，避免被历史失败产物毒化
         if (remappedJar.exists() && File(remappedJar.absolutePath).length() > 22) return@runCatching remappedJar

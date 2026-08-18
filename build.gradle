@@ -57,11 +57,11 @@ dependencies {
     compile("net.fabricmc:tiny-remapper:0.8.6")
     compile("org.vineflower:vineflower:1.11.2")
 
-    compile("org.ow2.asm:asm:9.6")
-    compile("org.ow2.asm:asm-commons:9.6")
-    compile("org.ow2.asm:asm-tree:9.6")
-    compile("org.ow2.asm:asm-analysis:9.6")
-    compile("org.ow2.asm:asm-util:9.6")
+    compile("org.ow2.asm:asm:9.10.1")
+    compile("org.ow2.asm:asm-commons:9.10.1")
+    compile("org.ow2.asm:asm-tree:9.10.1")
+    compile("org.ow2.asm:asm-analysis:9.10.1")
+    compile("org.ow2.asm:asm-util:9.10.1")
 }
 
 def compile(str, closure = {}) {
