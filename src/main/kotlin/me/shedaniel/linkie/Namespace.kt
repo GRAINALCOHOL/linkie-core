@@ -22,6 +22,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 import javax.lang.model.SourceVersion
@@ -65,6 +66,7 @@ abstract class Namespace(val id: String) {
     open fun getDependencies(): Set<Namespace> = setOf()
 
     private val mappingsSuppliers = mutableListOf<MappingsSupplier>()
+    private val getBytesLocks = ConcurrentHashMap<String, Any>()
     val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -606,7 +608,12 @@ abstract class Namespace(val id: String) {
         if (innerPath == null) {
             return Files.readAllBytes(Paths.get(outerPath))
         }
-        StitchUtil.getJarFileSystem(File(outerPath), false).use { fs -> return Files.readAllBytes(fs.get().getPath(innerPath)) }
+        val lock = getBytesLocks.computeIfAbsent(outerPath) { Any() }
+        return synchronized(lock) {
+            StitchUtil.getJarFileSystem(File(outerPath), false).use { fs ->
+                Files.readAllBytes(fs.get().getPath(innerPath))
+            }
+        }
     }
 
     private fun getNameFromType(nameCounts: MutableMap<String, Int>, type: String, isArg: Boolean): String? {
