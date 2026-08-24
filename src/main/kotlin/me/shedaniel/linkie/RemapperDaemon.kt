@@ -92,24 +92,13 @@ object RemapperDaemon {
         namespace: Namespace,
         version: String,
         remappedJar: VfsFile,
-        add: Int?,
         failed: Boolean = false,
     ) {
         val sourcesDir = Namespaces.config.cacheDirectory / "minecraft-jars" / "sources" / "${namespace.id}-$version"
         sourcesDir.mkdirs()
         val cacheJson = sourcesDir / "cache.json"
-        val cache: Cache = when {
-            cacheJson.exists() && add != null -> namespace.json.decodeFromString(
-                Cache.serializer(),
-                cacheJson.readString()
-            )
-
-            else -> countClasses(remappedJar, sourcesDir).let {
-                if (add != null) it.copy(classes = it.classes + add)
-                else it
-            }
-        }
-        cacheJson.writeString(namespace.json.encodeToString(Cache.serializer(), cache.copy(failed = failed)))
+        val cache = countClasses(remappedJar, sourcesDir).copy(failed = failed)
+        cacheJson.writeString(namespace.json.encodeToString(Cache.serializer(), cache))
     }
 
     private suspend fun countClasses(remappedJar: VfsFile, sourcesDir: VfsFile): Cache {

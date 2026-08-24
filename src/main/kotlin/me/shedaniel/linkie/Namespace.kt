@@ -448,7 +448,7 @@ abstract class Namespace(val id: String) {
 
         val output = alternativeSourcesFile.takeIfExists() ?: sourcesFile
 
-        RemapperDaemon.updateCacheJson(this, version, remappedJar, 1)
+        RemapperDaemon.updateCacheJson(this, version, remappedJar)
 
         return output
     }
@@ -460,11 +460,11 @@ abstract class Namespace(val id: String) {
             val ff = ffProvider()
             ff.decompileContext()
         } catch (e: Throwable) {
-            RemapperDaemon.updateCacheJson(this, version, remappedJar, null, true)
+            RemapperDaemon.updateCacheJson(this, version, remappedJar, failed = true)
             throw e
         }
 
-        RemapperDaemon.updateCacheJson(this, version, remappedJar, null)
+        RemapperDaemon.updateCacheJson(this, version, remappedJar)
     }
 
     private suspend fun Namespace.getRemappedJar(
